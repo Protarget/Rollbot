@@ -1,0 +1,17 @@
+{
+    "extends": "tslint:recommended",
+    "rules": {
+        "semicolon": [true, "never"],
+        "interface-name": false,
+        "max-line-length": false,
+        "arrow-parens": false,
+        "no-shadowed-variable": false,
+        "one-line": false,
+        "max-classes-per-file": false,
+        "no-console": false,
+        "member-access": [true, "check-accessor", "check-parameter-property", "check-constructor"],
+        "linebreak-style": [true, "LF"],
+        "typedef": [true, "call-signature", "parameter", "member-variable-declaration", "property-declaration"],
+        "trailing-comma": false
+    }
+}

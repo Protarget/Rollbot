@@ -1,0 +1,5 @@
+node_modules
+.vscode/
+data/_Secrets/
+data/gpt2/
+data/Trivia/jeopardy.json
