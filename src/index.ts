@@ -30,12 +30,9 @@ if (process.argv.map(x => x.trim()).some(x => x === "-d")) {
     rollBot = new Bot(new BotTestClient())
 }
 else {
-    rollBot = new Bot(new BotIRCClient("irc.rizon.net", "chessbot", "#grandmashouse homer"))
+    rollBot = new Bot(new BotIRCClient("irc.rizon.net", "rollbot", "#grandmashouse homer"))
 }
 
-rollBot.addPlugin(new Chess())
-
-/*
 rollBot.addPlugin(new History())
 rollBot.addPlugin(new Roll())
 rollBot.addPlugin(new Trout())
@@ -56,4 +53,4 @@ rollBot.addPlugin(new Face())
 rollBot.addPlugin(new Cat())
 rollBot.addPlugin(new ShellStdio("!complete", path.join(process.cwd(), "data/gpt2/gen.sh"), 300, "GPT2 Server Crashed", "GPT2 Server Unloaded"))
 rollBot.addPlugin(new Weed())
-*/
+rollBot.addPlugin(new Chess())
