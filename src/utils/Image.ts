@@ -29,7 +29,6 @@ export default class Image {
     public static async fromUrl(location: string): Promise<Image> {
         const data = await fetch(location)
         const buffer = await data.buffer()
-        const image = new nodeCanvas.Image()
         const final = await new Promise<Image>((resolve, reject) => {
             const image = new nodeCanvas.Image()
             image.onload = () => {
@@ -39,6 +38,20 @@ export default class Image {
             }
             image.onerror = e => reject(e)
             image.src = buffer
+        })
+        return final
+    }
+    
+    public static async fromPath(path: string): Promise<Image> {
+        const final = await new Promise<Image>((resolve, reject) => {
+            const image = new nodeCanvas.Image()
+            image.onload = () => {
+                const result = new Image(image.width, image.height)
+                result.rawContext.drawImage(image as any, 0, 0)
+                resolve(result)
+            }
+            image.onerror = e => reject(e)
+            image.src = path
         })
         return final
     }
@@ -108,6 +121,31 @@ export default class Image {
 
     public composite(image: Image, x: number, y: number, width?: number, height?: number): Image {
         this.internalContext.drawImage(image.internalCanvas, x, y, width || image.width, height || image.height)
+        return this
+    }
+    
+    public fillRect(x: number, y: number, width: number, height: number): Image {
+        this.internalContext.fillRect(x, y, width, height)
+        return this
+    }
+    
+    public fillText(x: number, y: number, text: string): Image {
+        this.internalContext.fillText(text, x, y)
+        return this
+    }
+    
+    public strokeText(x: number, y: number, text: string): Image {
+        this.internalContext.strokeText(text, x, y)
+        return this
+    }
+    
+    public textAlign(align: "center" | "end" | "left" | "right" | "start"): Image {
+        this.internalContext.textAlign = align
+        return this
+    }
+    
+    public textBaseline(baseline: "alphabetic" | "bottom" | "hanging" | "ideographic" | "middle" | "top"): Image {
+        this.internalContext.textBaseline = baseline
         return this
     }
 

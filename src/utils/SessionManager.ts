@@ -1,6 +1,6 @@
 export class Session<T> {
     public end: () => void
-    public onCreate(value?: T): void { /* */ }
+    public onCreate(value?: T, id?: string): void { /* */ }
     public onDestroy(): void { /* */ }
 }
 
@@ -16,7 +16,7 @@ export class SessionManager<T extends Session<TS>, TS> {
         const session = new this.typeConstructor()
         session.end = () => { this.destroy(id) }
         this.sessions.set(id, session)
-        session.onCreate(argument)
+        session.onCreate(argument, id)
         return session
     }
 
@@ -52,5 +52,19 @@ export class SessionManager<T extends Session<TS>, TS> {
         else {
             withoutCallback()
         }
+    }
+
+    public getWhere(predicate: (value: T) => boolean): T[] {
+        const result = []
+        for (const session of this.sessions.values()) {
+            if (predicate(session)) {
+                result.push(session)
+            }
+        }
+        return result
+    }
+
+    public getAll(): T[] {
+        return Array.from(this.sessions.values())
     }
 }
