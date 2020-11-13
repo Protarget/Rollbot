@@ -8,6 +8,7 @@ import BotTestClient from "./BotTestClient"
 import Calc from "./plugins/Calc"
 import Caption from "./plugins/Caption"
 import Cat from "./plugins/Cat"
+import Chess from "./plugins/Chess"
 import Face from "./plugins/Face"
 import FRC from "./plugins/FRC"
 import History from "./plugins/History"
@@ -52,3 +53,4 @@ rollBot.addPlugin(new Face())
 rollBot.addPlugin(new Cat())
 rollBot.addPlugin(new ShellStdio("!complete", path.join(process.cwd(), "data/gpt2/gen.sh"), 300, "GPT2 Server Crashed", "GPT2 Server Unloaded"))
 rollBot.addPlugin(new Weed())
+rollBot.addPlugin(new Chess())
