@@ -23,6 +23,7 @@ import Trout from "./plugins/Trout"
 import Tweets from "./plugins/Tweets"
 import Weather from "./plugins/Weather"
 import Weed from "./plugins/Weed"
+import Word from "./plugins/Word"
 
 let rollBot = null
 
@@ -54,3 +55,4 @@ rollBot.addPlugin(new Cat())
 rollBot.addPlugin(new ShellStdio("!complete", path.join(process.cwd(), "data/gpt2/gen.sh"), 300, "GPT2 Server Crashed", "GPT2 Server Unloaded"))
 rollBot.addPlugin(new Weed())
 rollBot.addPlugin(new Chess())
+rollBot.addPlugin(new Word())
