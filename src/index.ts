@@ -24,6 +24,7 @@ import Tweets from "./plugins/Tweets"
 import Weather from "./plugins/Weather"
 import Weed from "./plugins/Weed"
 import Word from "./plugins/Word"
+import Ai from "./plugins/Ai"
 
 let rollBot = null
 
@@ -56,3 +57,4 @@ rollBot.addPlugin(new ShellStdio("!complete", path.join(process.cwd(), "data/gpt
 rollBot.addPlugin(new Weed())
 rollBot.addPlugin(new Chess())
 rollBot.addPlugin(new Word())
+rollBot.addPlugin(new Ai())
