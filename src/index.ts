@@ -25,6 +25,7 @@ import Weather from "./plugins/Weather"
 import Weed from "./plugins/Weed"
 import Word from "./plugins/Word"
 import Ai from "./plugins/Ai"
+import Wordle from "./plugins/Wordle"
 
 let rollBot = null
 
@@ -58,3 +59,4 @@ rollBot.addPlugin(new Weed())
 rollBot.addPlugin(new Chess())
 rollBot.addPlugin(new Word())
 rollBot.addPlugin(new Ai())
+rollBot.addPlugin(new Wordle("./data/words.txt"))
