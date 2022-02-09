@@ -170,21 +170,22 @@ export default class Wordle extends CommandPlugin {
 
     private scoreWord(word: string): Array<[string, number]> {
         const letterCounts = this.getLetterCounts()
-        const result = []
+        const result: Array<[string, number]> = word.split("").map(x => [x, 0] as [string, number])
 
         for (let index = 0; index < word.length; index++) {
-            let moveLetter = word.charAt(index)
-            let actualLetter = this.currentWord.charAt(index)
+            const moveLetter = result[index][0]
+            const actualLetter = this.currentWord.charAt(index)
             if (moveLetter === actualLetter) {
-                result.push([moveLetter, 2])
+                result[index][1] = 2
                 letterCounts[moveLetter]--
             }
-            else if (letterCounts[moveLetter]) {
-                result.push([moveLetter, 1])
+        }
+
+        for (let index = 0; index < word.length; index++) {
+            const moveLetter = word.charAt(index)
+            if (result[index][1] === 0 && letterCounts[moveLetter]) {
+                result[index][1] = 1
                 letterCounts[moveLetter]--
-            }
-            else {
-                result.push([moveLetter, 0])
             }
         }
 
