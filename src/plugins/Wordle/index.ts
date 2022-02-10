@@ -9,6 +9,7 @@ export default class Wordle extends CommandPlugin {
     private playing: boolean
     private currentWord: string
     private validWords: Set<string>
+    private guessState: {[letter: string]: number}
     private guessHistory: string[] = []
     private guessMaximum: number = 0
 
@@ -25,7 +26,7 @@ export default class Wordle extends CommandPlugin {
 
     private wordle(from: string, args: string[]) {
         try {
-            if (args[0] == "show") {
+            if (this.playing && args[0] == "show") {
                 this.showGameState()
             }
             else if (args[0] == "help") {
@@ -90,6 +91,7 @@ export default class Wordle extends CommandPlugin {
         }
 
         this.validWords = new Set(possibleWords)
+        this.guessState = {}
         this.currentWord = possibleWords[Math.floor(Math.random() * possibleWords.length)]
         this.guessHistory = []
         this.guessMaximum = guessMaximum
@@ -115,7 +117,11 @@ export default class Wordle extends CommandPlugin {
                 this.loseGame()
             }
             else {
-                this.showMove(move, true)
+                const scoredMove = this.scoreWord(move)
+                for (const [letter, score] of scoredMove) {
+                    this.setGuessLetterState(letter, score)
+                }
+                this.showScoredMove(scoredMove, true)
             }
         }
     }
@@ -144,13 +150,24 @@ export default class Wordle extends CommandPlugin {
     }
 
     private showMove(move: string, includeCount: boolean = false) {
-        const moveText = this.colorWord(move)
-        const countText = (includeCount ? ` (${this.guessHistory.length}/${this.guessMaximum})` : "")
-        this.bot.sayToAll(moveText + countText)
+        this.showScoredMove(this.scoreWord(move), includeCount)
+    }
+
+    private showScoredMove(scoredMove: Array<[string, number]>, includeCount: boolean = false) {
+        const coloredMove = this.colorScoredWord(scoredMove)
+
+        if (includeCount) {
+            const countText =`(${this.guessHistory.length}/${this.guessMaximum}) ${this.getCorrectnessGroups()}`
+            this.bot.sayToAll(`${coloredMove} ${countText}`)
+        }
+        else {
+            this.bot.sayToAll(coloredMove)
+        }
+
     }
     
-    private colorWord(move: string): string {
-        return this.scoreWord(move).map(x => this.colorScoredLetter(x)).join("") + IRC_COLOR_CODE_CHAR
+    private colorScoredWord(scoredMove: Array<[string, number]>): string {
+        return scoredMove.map(x => this.colorScoredLetter(x)).join("") + IRC_COLOR_CODE_CHAR
     }
 
     private colorScoredLetter(scoredLetter: [string, number]): string {
@@ -205,5 +222,58 @@ export default class Wordle extends CommandPlugin {
         }
 
         return letterCounts
+    }
+
+    private getCorrectnessGroups(): string {
+        const groups = [[], [], []]
+        const unknownGroup = []
+        for (const letter of "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("")) {
+            const state = this.getGuessLetterState(letter)
+            if (state >= 0) {
+                groups[state].push(letter)
+            }
+            else {
+                unknownGroup.push(letter)
+            }
+        }
+
+        const outputGroups = []
+
+        if (groups[2].length > 0) {
+            outputGroups.push(`${IRC_COLOR_CODE_CHAR}00,03${groups[2].join("")}${IRC_COLOR_CODE_CHAR}`)
+        }
+
+        if (groups[1].length > 0) {
+            outputGroups.push(`${IRC_COLOR_CODE_CHAR}00,07${groups[1].join("")}${IRC_COLOR_CODE_CHAR}`)
+        }
+
+        if (groups[0].length > 0) {
+            outputGroups.push(`${IRC_COLOR_CODE_CHAR}00,14${groups[0].join("")}${IRC_COLOR_CODE_CHAR}`)
+        }
+
+        if (unknownGroup.length > 0) {
+            outputGroups.push(unknownGroup.join(""))
+        }
+
+        return outputGroups.join(" ")
+    }
+
+    private setGuessLetterState(letter: string, state: number) {
+        const currentState = this.guessState[letter]
+
+        if (currentState == undefined || state > currentState) {
+            this.guessState[letter] = state
+        }
+    }
+
+    private getGuessLetterState(letter: string): number {
+        const currentState = this.guessState[letter]
+
+        if (currentState === undefined) {
+            return -1
+        }
+        else {
+            return currentState
+        }
     }
 }
