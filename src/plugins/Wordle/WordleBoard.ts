@@ -45,8 +45,11 @@ export default class WordleBoard {
             }
             else {
                 for (const guess of this.guesses) {
-                    if (guess.getLetterAt(index) === letter && guess.getLetterScoreAt(index) === WordleLetterScore.PartiallyCorrect) {
-                        return `The letter '${letter}' has already been tried in position ${index + 1}`
+                    if (guess.getLetterAt(index) === letter) {
+                        const guessScore = guess.getLetterScoreAt(index)
+                        if (guessScore === WordleLetterScore.PartiallyCorrect || guessScore === WordleLetterScore.Incorrect) {
+                            return `The letter '${letter}' has already been tried in position ${index + 1}`
+                        }
                     }
                 }
             }
