@@ -1,22 +1,18 @@
 import * as fs from "fs"
 import CommandPlugin from "../CommandPlugin"
-
-const ALPHANUMERIC_REGEX = /^[a-z]+$/i
-const IRC_COLOR_CODE_CHAR = String.fromCharCode(3)
+import WordleDictionary from "./WordleDictionary"
+import WordleGame, { WordleGameGuessResult, WordleGameGuessResultType } from "./WordleGame"
+import WordleUtils from "./WordleUtils"
+import WordleWord from "./WordleWord"
 
 export default class Wordle extends CommandPlugin {
-    private words: string[] = []
-    private playing: boolean
-    private currentWord: string
-    private validWords: Set<string>
-    private guessState: {[letter: string]: number}
-    private guessHistory: string[] = []
-    private guessMaximum: number = 0
+    private dictionary: WordleDictionary
+    private game: WordleGame
 
     public constructor(filename: string) {
         super()
         try {
-            this.words = fs.readFileSync(filename, "utf-8").split("\n").map(x => x.toUpperCase()).filter(x => ALPHANUMERIC_REGEX.test(x))
+            this.dictionary = new WordleDictionary(fs.readFileSync(filename, "utf-8").split("\n"))
             this.register("!wordle", this.wordle.bind(this))
         }
         catch (e) {
@@ -26,7 +22,7 @@ export default class Wordle extends CommandPlugin {
 
     private wordle(from: string, args: string[]) {
         try {
-            if (this.playing && args[0] == "show") {
+            if (this.isPlaying() && args[0] == "show") {
                 this.showGameState()
             }
             else if (args[0] == "help") {
@@ -36,9 +32,12 @@ export default class Wordle extends CommandPlugin {
                 this.bot.sayToAll("Use !wordle <word> to make a guess in an ongoing game")
                 this.bot.sayToAll("Use !wordle show to show the current ongoing game")
             }
-            else if (this.playing) {
+            else if (this.isPlaying()) {
                 if (args.length === 1) {
-                    this.makeMove(args[0].toUpperCase())
+                    this.makeMove(args[0])
+                }
+                else if (args.length === 2 && args[0] == "confirm") {
+                    this.makeMove(args[1], false)
                 }
                 else {
                     this.bot.sayToAll("Use '!wordle <word>' to make a guess, or '!wordle show' to see the current game state")
@@ -67,8 +66,9 @@ export default class Wordle extends CommandPlugin {
             }
         }
         catch (e) {
+            console.error(e)
             this.bot.sayToAll("Uhh, something went wrong? I'm going to reset everything instead of crashing")
-            this.playing = false
+            this.game = null
         }
     }
 
@@ -83,197 +83,79 @@ export default class Wordle extends CommandPlugin {
             return
         }
 
-        const possibleWords = this.words.filter(x => x.length === letterCount)
-        
-        if (possibleWords.length === 0) {
+        const subDictionary = this.dictionary.filter(x => x.length === letterCount)
+
+        if (subDictionary.isEmpty()) {
             this.bot.sayToAll(`No words with ${letterCount} letters were found`)
             return
         }
 
-        this.validWords = new Set(possibleWords)
-        this.guessState = {}
-        this.currentWord = possibleWords[Math.floor(Math.random() * possibleWords.length)]
-        this.guessHistory = []
-        this.guessMaximum = guessMaximum
-        this.playing = true
+        this.game = new WordleGame(subDictionary, guessMaximum)
         this.bot.sayToAll("Wordle game started")
     }
 
-    private makeMove(move: string) {
-        if (move.length !== this.currentWord.length) {
-            this.bot.sayToAll(`A guess should be ${this.currentWord.length} letters long`)
-        }
-        else if (!this.validWords.has(move)) {
-            this.bot.sayToAll(`That isn't a valid guess`)
-        }
-        else if (move === this.currentWord) {
-            this.guessHistory.push(move)
-            this.winGame()
-        }
-        else {
-            this.guessHistory.push(move)
-
-            if (this.guessHistory.length >= this.guessMaximum) {
-                this.loseGame()
-            }
-            else {
-                const scoredMove = this.scoreWord(move)
-                for (const [letter, score] of scoredMove) {
-                    this.setGuessLetterState(letter, score)
-                }
-                this.showScoredMove(scoredMove, true)
-            }
+    private makeMove(move: string, enforceSafety: boolean = true) {
+        const result = this.game.guess(move, enforceSafety)
+        switch (result.getType()) {
+            case WordleGameGuessResultType.Victory:
+                this.winGame(result)
+                return
+            case WordleGameGuessResultType.Loss:
+                this.loseGame(result)
+                return
+            case WordleGameGuessResultType.Valid:
+                this.showMove(result)
+                return
+            case WordleGameGuessResultType.Invalid:
+                this.showInvalid(result)
+                return
+            case WordleGameGuessResultType.Unsafe:
+                this.showUnsafe(result)
+                return
         }
     }
 
-    private winGame() {
-        this.bot.sayToAll(`Wordle ∞ Victory ${this.guessHistory.length}/${this.guessMaximum}`)
+    private winGame(result: WordleGameGuessResult) {
+        this.bot.sayToAll(`Wordle ∞ Victory (${this.game.getCorrectWord()}) ${this.game.toProgressString()}`)
         this.showGame()
-        this.playing = false
+        this.game = null
     }
 
-    private loseGame() {
-        this.bot.sayToAll(`Wordle ∞ Failure (${this.currentWord}) ${this.guessHistory.length}/${this.guessMaximum}`)
+    private loseGame(result: WordleGameGuessResult) {
+        this.bot.sayToAll(`Wordle ∞ Failure (${this.game.getCorrectWord()}) ${this.game.toProgressString()}`)
         this.showGame()
-        this.playing = false
+        this.game = null
+    }
+
+    private showInvalid(result: WordleGameGuessResult) {
+        this.bot.sayToAll(`Invalid move: ${result.getReason()}`)
+    }
+
+    private showUnsafe(result: WordleGameGuessResult) {
+        this.bot.sayToAll(`Unsafe move: ${result.getReason()}`)
+        this.bot.sayToAll("Use '!wordle confirm <word>' to override safety checks")
     }
 
     private showGameState() {
-        this.bot.sayToAll(`Wordle ∞ Currently Playing ${this.guessHistory.length}/${this.guessMaximum}`)
-        this.showGame()
-    }
-
-    private showGame() {
-        for (const guess of this.guessHistory) {
-            this.showMove(guess)
+        this.bot.sayToAll(`Wordle ∞ Currently Playing ${this.game.toProgressString()}`)
+        if (this.game.getGuessCount() > 0) {
+            this.showGame(true)
         }
     }
 
-    private showMove(move: string, includeCount: boolean = false) {
-        this.showScoredMove(this.scoreWord(move), includeCount)
+    private showMove(result: WordleGameGuessResult) {
+        const wordString = `${result.getScore().toPrettyString()} (${this.game.toProgressString()}) ${this.game.toLetterGroupString()}`
+        this.bot.sayToAll(wordString)
     }
 
-    private showScoredMove(scoredMove: Array<[string, number]>, includeCount: boolean = false) {
-        const coloredMove = this.colorScoredWord(scoredMove)
-
-        if (includeCount) {
-            const countText =`(${this.guessHistory.length}/${this.guessMaximum}) ${this.getCorrectnessGroups()}`
-            this.bot.sayToAll(`${coloredMove} ${countText}`)
-        }
-        else {
-            this.bot.sayToAll(coloredMove)
-        }
-
-    }
-    
-    private colorScoredWord(scoredMove: Array<[string, number]>): string {
-        return scoredMove.map(x => this.colorScoredLetter(x)).join("") + IRC_COLOR_CODE_CHAR
-    }
-
-    private colorScoredLetter(scoredLetter: [string, number]): string {
-        const letter = scoredLetter[0]
-        const score = scoredLetter[1]
-
-        if (score === 2) {
-            return `${IRC_COLOR_CODE_CHAR}00,03${letter}`
-        }
-        else if (score === 1) {
-            return `${IRC_COLOR_CODE_CHAR}00,07${letter}`
-        }
-        else {
-            return `${IRC_COLOR_CODE_CHAR}00,14${letter}`
+    private showGame(showAdditionalInfo: boolean = false) {
+        const boardString = this.game.toPrettyString(showAdditionalInfo)
+        for (const line of boardString.split("\n")) {
+            this.bot.sayToAll(line)
         }
     }
 
-    private scoreWord(word: string): Array<[string, number]> {
-        const letterCounts = this.getLetterCounts()
-        const result: Array<[string, number]> = word.split("").map(x => [x, 0] as [string, number])
-
-        for (let index = 0; index < word.length; index++) {
-            const moveLetter = result[index][0]
-            const actualLetter = this.currentWord.charAt(index)
-            if (moveLetter === actualLetter) {
-                result[index][1] = 2
-                letterCounts[moveLetter]--
-            }
-        }
-
-        for (let index = 0; index < word.length; index++) {
-            const moveLetter = word.charAt(index)
-            if (result[index][1] === 0 && letterCounts[moveLetter]) {
-                result[index][1] = 1
-                letterCounts[moveLetter]--
-            }
-        }
-
-        return result
-    }
-
-    private getLetterCounts(): {[letter: string]: number} {
-        const letterCounts = {}
-
-        for (const letter of this.currentWord.split("")) {
-            if (letterCounts[letter]) {
-                letterCounts[letter] = letterCounts[letter] + 1
-            }
-            else {
-                letterCounts[letter] = 1
-            }
-        }
-
-        return letterCounts
-    }
-
-    private getCorrectnessGroups(): string {
-        const groups = [[], [], []]
-        const unknownGroup = []
-        for (const letter of "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("")) {
-            const state = this.getGuessLetterState(letter)
-            if (state >= 0) {
-                groups[state].push(letter)
-            }
-            else {
-                unknownGroup.push(letter)
-            }
-        }
-
-        const outputGroups = []
-
-        if (groups[2].length > 0) {
-            outputGroups.push(`${IRC_COLOR_CODE_CHAR}00,03${groups[2].join("")}${IRC_COLOR_CODE_CHAR}`)
-        }
-
-        if (groups[1].length > 0) {
-            outputGroups.push(`${IRC_COLOR_CODE_CHAR}00,07${groups[1].join("")}${IRC_COLOR_CODE_CHAR}`)
-        }
-
-        if (groups[0].length > 0) {
-            outputGroups.push(`${IRC_COLOR_CODE_CHAR}00,14${groups[0].join("")}${IRC_COLOR_CODE_CHAR}`)
-        }
-
-        if (unknownGroup.length > 0) {
-            outputGroups.push(unknownGroup.join(""))
-        }
-
-        return outputGroups.join(" ")
-    }
-
-    private setGuessLetterState(letter: string, state: number) {
-        const currentState = this.guessState[letter]
-
-        if (currentState == undefined || state > currentState) {
-            this.guessState[letter] = state
-        }
-    }
-
-    private getGuessLetterState(letter: string): number {
-        const currentState = this.guessState[letter]
-
-        if (currentState === undefined) {
-            return -1
-        }
-        else {
-            return currentState
-        }
+    private isPlaying(): boolean {
+        return this.game !== null && this.game !== undefined
     }
 }
