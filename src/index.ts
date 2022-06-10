@@ -26,6 +26,7 @@ import Weed from "./plugins/Weed"
 import Word from "./plugins/Word"
 import Ai from "./plugins/Ai"
 import Wordle from "./plugins/Wordle"
+import Dalle from "./plugins/Dalle"
 
 let rollBot = null
 
@@ -60,3 +61,4 @@ rollBot.addPlugin(new Chess())
 rollBot.addPlugin(new Word())
 rollBot.addPlugin(new Ai())
 rollBot.addPlugin(new Wordle("./data/scrabble.txt"))
+rollBot.addPlugin(new Dalle())
