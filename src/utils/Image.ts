@@ -56,6 +56,20 @@ export default class Image {
         return final
     }
 
+    public static async fromBase64(mimeType: string, base64: string): Promise<Image> {
+        const final = await new Promise<Image>((resolve, reject) => {
+            const image = new nodeCanvas.Image()
+            image.onload = () => {
+                const result = new Image(image.width, image.height)
+                result.rawContext.drawImage(image as any, 0, 0)
+                resolve(result)
+            }
+            image.onerror = e => reject(e)
+            image.src = `data:${mimeType};base64,${base64}`
+        })
+        return final
+    }
+
     private internalWidth: number
     private internalHeight: number
     private internalCanvas: any
