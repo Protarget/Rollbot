@@ -10,7 +10,7 @@ export class OpenAiManager {
     }
 
 
-    public async complete(prompt: string, size: number = 128): Promise<string> {
+    public async complete(prompt: string, size: number = 128, merge: boolean = true): Promise<string> {
         const trimmedMessage = prompt.trim()
         const completeData = await fetch("https://api.openai.com/v1/engines/text-davinci-002/completions", {
             method: "POST",
@@ -28,7 +28,13 @@ export class OpenAiManager {
 
 
         const completeJson = await completeData.json()
-        return trimmedMessage + completeJson.choices[0].text
+
+        if (merge) {
+            return trimmedMessage + completeJson.choices[0].text
+        }
+        else {
+            return completeJson.choices[0].text
+        }
     }
 }
 
