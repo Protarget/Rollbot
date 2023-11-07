@@ -1,5 +1,6 @@
 import * as fs from "fs"
 import fetch from "node-fetch"
+import Image from "./Image"
 
 export class OpenAiManager {
     private apiKey: string
@@ -35,6 +36,35 @@ export class OpenAiManager {
         else {
             return completeJson.choices[0].text
         }
+    }
+
+    public async image(prompt: string) {
+        const trimmedMessage = prompt.trim()
+        const completeData = await fetch("https://api.openai.com/v1/images/generations", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${this.apiKey}`
+            },
+            body: JSON.stringify({
+                "model": "dall-e-3",
+                "prompt": trimmedMessage,
+                "n":1,
+                "size":"1024x1024"
+            })
+        })
+
+        const completeJson = await completeData.json()
+
+        if (completeJson.error) {
+            throw new Error(completeJson.error.message)
+        }
+
+        const baseUrl = completeJson.data[0].url
+
+        const image = await Image.fromUrl(baseUrl)
+
+        return [image.upload(), completeJson.data[0].revised_prompt]
     }
 }
 
