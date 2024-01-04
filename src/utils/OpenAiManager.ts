@@ -12,21 +12,20 @@ export class OpenAiManager {
 
 
     public async complete(prompt: string, size: number = 128, merge: boolean = true): Promise<string> {
-        const trimmedMessage = prompt.trim()
-        const completeData = await fetch("https://api.openai.com/v1/engines/text-davinci-002/completions", {
+        const trimmedMessage = prompt.trim().replace("\\n", "\n")
+        const completeData = await fetch("https://api.openai.com/v1/completions", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
                 "Authorization": `Bearer ${this.apiKey}`
             },
             body: JSON.stringify({
+                model: "gpt-3.5-turbo-instruct",
                 prompt: trimmedMessage,
                 max_tokens: size,
                 temperature: 0.9,
-
             })
         })
-
 
         const completeJson = await completeData.json()
 
