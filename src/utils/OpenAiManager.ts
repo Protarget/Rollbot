@@ -12,7 +12,7 @@ export class OpenAiManager {
 
 
     public async complete(prompt: string, size: number = 128, merge: boolean = true): Promise<string> {
-        const trimmedMessage = prompt.trim().replace("\\n", "\n")
+        const trimmedMessage = prompt.trim().replace(/\\n/g, "\n")
         const completeData = await fetch("https://api.openai.com/v1/completions", {
             method: "POST",
             headers: {
